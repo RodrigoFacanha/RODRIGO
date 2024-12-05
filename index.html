@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tocloc - Tocou, Locou, Jogou!</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Vue.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <!-- Axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .container {
+            max-width: 600px;
+            margin-top: 50px;
+        }
+        .navbar {
+            background-color: #8b1810; /* Cor da barra de navegação */
+        }
+        .navbar a {
+            color: white;
+            margin: 0 10px;
+        }
+        .navbar a:hover {
+            color: #f8f9fa;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .btn-primary, .btn-success {
+            background-color: #8b1810; /* Cor do botão */
+            border-color: #8b1810;
+            width: 100%;
+        }
+        .btn-primary:hover, .btn-success:hover {
+            background-color: #66150c; /* Cor do botão ao passar o mouse */
+            border-color: #66150c;
+        }
+        .btn-danger {
+            background-color: #d9534f; /* Cor do botão de sair */
+            border-color: #d9534f;
+        }
+        .btn-danger:hover {
+            background-color: #c9302c; /* Cor do botão de sair ao passar o mouse */
+            border-color: #c9302c;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <nav class="navbar navbar-expand-lg navbar-dark">
+            <a class="navbar-brand" href="#">Tocloc</a>
+            <div class="navbar-nav ml-auto">
+                <a class="nav-link" href="#" @click="showLoginScreen()" v-if="!loggedIn">Login</a>
+                <a class="nav-link" href="#" @click="showSignupScreen()" v-if="!loggedIn">Cadastrar</a>
+                <a class="nav-link" href="#" @click="showAdminPanel()" v-if="loggedIn && userRole === 'admin'">Admin</a>
+                <a class="nav-link" href="#" @click="showReservationScreen()" v-if="loggedIn">Reservar</a>
+                <a class="nav-link" href="#" @click="logout()" v-if="loggedIn">Sair</a>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Tela de Login -->
+            <div v-if="currentScreen === 'login'">
+                <h2>Login</h2>
+                <form @submit.prevent="login">
+                    <div class="form-group">
+                        <label for="cpf">CPF</label>
+                        <input type="text" id="cpf" v-model="cpf" class="form-control" placeholder="Digite seu CPF" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" v-model="password" class="form-control" placeholder="Digite sua senha" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Entrar</button>
+                    <p><a href="#" @click="showForgotPasswordScreen()">Esqueci minha senha</a></p>
+                </form>
+            </div>
+
+            <!-- Tela de Recuperação de Senha -->
+            <div v-if="currentScreen === 'forgotPassword'">
+                <h2>Recuperar Senha</h2>
+                <form @submit.prevent="recoverPassword">
+                    <div class="form-group">
+                        <label for="cpf">CPF</label>
+                        <input type="text" id="cpf" v-model="cpf" class="form-control" placeholder="Digite seu CPF" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dob">Data de Nascimento</label>
+                        <input type="date" id="dob" v-model="dob" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Recuperar</button>
+                    <p><a href="#" @click="showLoginScreen()">Voltar para Login</a></p>
+                </form>
+            </div>
+
+            <!-- Tela de Cadastro -->
+            <div v-if="currentScreen === 'signup'">
+                <h2>Cadastrar</h2>
+                <form @submit.prevent="register">
+                    <div class="form-group">
+                        <label for="name">Nome Completo</label>
+                        <input type="text" id="name" v-model="name" class="form-control" placeholder="Digite seu nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cpf">CPF</label>
+                        <input type="text" id="cpf" v-model="cpf" class="form-control" placeholder="Digite seu CPF" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" v-model="email" class="form-control" placeholder="Digite seu email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dob">Data de Nascimento</label>
+                        <input type="date" id="dob" v-model="dob" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="role">Escolha o Perfil</label>
+                        <select v-model="role" class="form-control" required>
+                            <option value="user">Usuário</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Cadastrar</button>
+                </form>
+            </div>
+
+            <!-- Tela de Reservas -->
+            <div v-if="currentScreen === 'reservation'">
+                <h2>Minhas Reservas</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nome do Espaço</th>
+                            <th>Data</th>
+                            <th>Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="reservation in userReservations" :key="reservation.id">
+                            <td>{{ reservation.spaceName }}</td>
+                            <td>{{ reservation.date }}</td>
+                            <td>{{ reservation.time }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <h2>Fazer Nova Reserva</h2>
+                <form @submit.prevent="reserveSpace">
+                    <div class="form-group">
+                        <label for="space">Escolha um Espaço</label>
+                        <select v-model="selectedSpace" class="form-control" required>
+                            <option v-for="space in availableSpaces" :key="space.id" :value="space.id">
+                                {{ space.nome }} - {{ space.localizacao }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reservationDate">Data da Reserva</label>
+                        <input type="date" v-model="reservationDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reservationTime">Hora da Reserva</label>
+                        <input type="time" v-model="reservationTime" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Confirmar Reserva</button>
+                </form>
+            </div>
+
+            <!-- Painel do Administrador -->
+            <div v-if="currentScreen === 'adminPanel'">
+                <h2>Painel Administrativo</h2>
+                <div v-if="userRole === 'admin'">
+                    <p>Lista de Usuários</p>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>CPF</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="user in users" :key="user.cpf">
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.cpf }}</td>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>Lista de Espaços Cadastrados</p>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nome do Espaço</th>
+                                <th>Localização</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="space in spaces" :key="space.id">
+                                <td>{{ space.nome }}</td>
+                                <td>{{ space.localizacao }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                currentScreen: 'login', // Controla a tela visível
+                cpf: '',
+                password: '',
+                dob: '',
+                name: '',
+                email: '',
+                userRole: '',
+                role: 'user', // Perfil padrão como usuário
+                userReservations: [],
+                availableSpaces: [],
+                selectedSpace: null,
+                reservationDate: '',
+                reservationTime: '',
+                loggedIn: false,
+                users: [],
+                spaces: []
+            },
+            methods: {
+                showLoginScreen() {
+                    this.currentScreen = 'login';
+                },
+                showForgotPasswordScreen() {
+                    this.currentScreen = 'forgotPassword';
+                },
+                showSignupScreen() {
+                    this.currentScreen = 'signup';
+                },
+                showAdminPanel() {
+                    this.currentScreen = 'adminPanel';
+                },
+                showReservationScreen() {
+                    this.currentScreen = 'reservation';
+                    this.fetchUserReservations(); // Ao entrar na tela de reserva, carregamos as reservas
+                },
+                login() {
+                    axios.post('/api/login', { cpf: this.cpf, password: this.password })
+                        .then(response => {
+                            this.loggedIn = true;
+                            this.userRole = response.data.tipoUsuario;
+                            if (this.userRole === 'admin') {
+                                this.fetchAdminData();
+                            }
+                            this.showReservationScreen(); // Após o login, vamos para a tela de reservas
+                        })
+                        .catch(error => alert('Erro no login.'));
+                },
+                recoverPassword() {
+                    axios.post('/api/recover-password', { cpf: this.cpf, dob: this.dob })
+                        .then(response => alert(response.data))
+                        .catch(error => alert('Erro ao recuperar senha.'));
+                },
+                register() {
+                    axios.post('/api/register', { name: this.name, cpf: this.cpf, email: this.email, dob: this.dob, role: this.role })
+                        .then(response => alert('Cadastro realizado com sucesso!'))
+                        .catch(error => alert('Erro ao cadastrar.'));
+                },
+                fetchAdminData() {
+                    axios.get('/api/admin/data')
+                        .then(response => {
+                            this.users = response.data.users;
+                            this.spaces = response.data.spaces;
+                        });
+                },
+                fetchUserReservations() {
+                    // Simula a busca de reservas do usuário logado
+                    axios.get(`/api/reservations?cpf=${this.cpf}`)
+                        .then(response => {
+                            this.userReservations = response.data;
+                        })
+                        .catch(error => alert('Erro ao buscar reservas.'));
+                },
+                reserveSpace() {
+                    axios.post('/api/reserve', {
+                        userCpf: this.cpf,
+                        spaceId: this.selectedSpace,
+                        date: this.reservationDate,
+                        time: this.reservationTime
+                    })
+                    .then(response => {
+                        alert('Reserva confirmada!');
+                        this.fetchUserReservations(); // Atualiza as reservas após uma nova reserva
+                    })
+                    .catch(error => alert('Erro ao fazer reserva.'));
+                },
+                logout() {
+                    this.loggedIn = false;
+                    this.userRole = '';
+                    this.currentScreen = 'login';
+                    this.cpf = '';
+                    this.password = '';
+                    this.name = '';
+                    this.email = '';
+                    this.dob = '';
+                    this.userReservations = [];
+                }
+            }
+        });
+    </script>
+</body>
+</html>
